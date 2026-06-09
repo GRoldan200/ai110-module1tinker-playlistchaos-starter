@@ -23,7 +23,7 @@ def normalize_artist(artist: str) -> str:
     """Normalize an artist name for comparisons."""
     if not artist:
         return ""
-    return artist.strip().lower()
+    return artist.strip().title()
 
 
 def normalize_genre(genre: str) -> str:
@@ -36,13 +36,17 @@ def normalize_song(raw: Song) -> Song:
     title = normalize_title(str(raw.get("title", "")))
     artist = normalize_artist(str(raw.get("artist", "")))
     genre = normalize_genre(str(raw.get("genre", "")))
-    energy = raw.get("energy", 0)
+    energy = raw.get("energy", 5)
 
     if isinstance(energy, str):
         try:
             energy = int(energy)
         except ValueError:
-            energy = 0
+            energy = 5
+
+    # Clamp energy to valid range (1-10)
+    if not isinstance(energy, int) or energy < 1 or energy > 10:
+        energy = 5
 
     tags = raw.get("tags", [])
     if isinstance(tags, str):
