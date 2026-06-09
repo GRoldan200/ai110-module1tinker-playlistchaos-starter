@@ -16,14 +16,14 @@ def normalize_title(title: str) -> str:
     """Normalize a song title for comparisons."""
     if not isinstance(title, str):
         return ""
-    return title.strip()
+    return title.strip()  # Keep original capitalization
 
 
 def normalize_artist(artist: str) -> str:
     """Normalize an artist name for comparisons."""
     if not artist:
         return ""
-    return artist.strip().title()
+    return artist.strip()  # Keep original capitalization
 
 
 def normalize_genre(genre: str) -> str:
