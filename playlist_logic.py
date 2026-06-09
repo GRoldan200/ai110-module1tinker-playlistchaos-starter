@@ -87,7 +87,13 @@ def classify_song(song: Song, profile: Dict[str, object]) -> List[str]:
     if energy >= hype_min_energy and (genre == favorite_genre or is_hype_keyword):
         moods.append("Hype")
     
-    return moods if moods else ["Mixed"]
+    # Mixed: songs with favorite genre but in the energy gap
+    if moods:
+        return moods
+    if genre == favorite_genre:
+        return ["Mixed"]
+    
+    return []
 
 
 def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMap:
@@ -101,9 +107,10 @@ def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMa
     for song in songs:
         normalized = normalize_song(song)
         moods = classify_song(normalized, profile)
-        normalized["mood"] = moods[0]  # Store primary mood for display
-        for mood in moods:
-            playlists[mood].append(normalized)
+        if moods:  # Only add if song matches favorite genre
+            normalized["mood"] = moods[0]  # Store primary mood for display
+            for mood in moods:
+                playlists[mood].append(normalized)
 
     return playlists
 
