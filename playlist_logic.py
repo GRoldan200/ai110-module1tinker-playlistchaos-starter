@@ -79,21 +79,19 @@ def classify_song(song: Song, profile: Dict[str, object]) -> List[str]:
 
     moods = []
     
-    # Chill: low energy AND (chill keywords or genre match)
-    if energy <= chill_max_energy and (genre == favorite_genre or is_chill_keyword):
-        moods.append("Chill")
-    
-    # Hype: high energy AND (favorite genre or hype keywords)
+    # Hype: energy >= hype_min_energy AND (favorite genre or hype keywords)
     if energy >= hype_min_energy and (genre == favorite_genre or is_hype_keyword):
         moods.append("Hype")
     
-    # Mixed: songs with favorite genre but in the energy gap
-    if moods:
-        return moods
-    if genre == favorite_genre:
-        return ["Mixed"]
+    # Chill: energy <= chill_max_energy OR title contains chill keywords
+    if energy <= chill_max_energy or is_chill_keyword:
+        moods.append("Chill")
     
-    return []
+    # Mixed: any song that doesn't meet Hype or Chill criteria
+    if not moods:
+        moods.append("Mixed")
+    
+    return moods
 
 
 def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMap:
@@ -177,7 +175,7 @@ def search_songs(
     query: str,
     field: str = "artist",
 ) -> List[Song]:
-    """Return songs matching the query on a given field."""
+    """Return songs matching the query on a given field (case-insensitive, partial match)."""
     if not query:
         return songs
 
@@ -186,7 +184,7 @@ def search_songs(
 
     for song in songs:
         value = str(song.get(field, "")).lower()
-        if value and value in q:
+        if value and q in value:
             filtered.append(song)
 
     return filtered
