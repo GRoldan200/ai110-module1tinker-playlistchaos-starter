@@ -61,8 +61,8 @@ def normalize_song(raw: Song) -> Song:
     }
 
 
-def classify_song(song: Song, profile: Dict[str, object]) -> str:
-    """Return a mood label given a song and user profile."""
+def classify_song(song: Song, profile: Dict[str, object]) -> List[str]:
+    """Return a list of mood labels given a song and user profile."""
     energy = song.get("energy", 0)
     genre = song.get("genre", "")
     title = song.get("title", "")
@@ -77,11 +77,14 @@ def classify_song(song: Song, profile: Dict[str, object]) -> str:
     is_hype_keyword = any(k in genre for k in hype_keywords)
     is_chill_keyword = any(k in title for k in chill_keywords)
 
-    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
-        return "Hype"
+    moods = []
+    
     if energy <= chill_max_energy or is_chill_keyword:
-        return "Chill"
-    return "Mixed"
+        moods.append("Chill")
+    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
+        moods.append("Hype")
+    
+    return moods if moods else ["Mixed"]
 
 
 def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMap:
@@ -94,9 +97,10 @@ def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMa
 
     for song in songs:
         normalized = normalize_song(song)
-        mood = classify_song(normalized, profile)
-        normalized["mood"] = mood
-        playlists[mood].append(normalized)
+        moods = classify_song(normalized, profile)
+        normalized["mood"] = moods[0]  # Store primary mood for display
+        for mood in moods:
+            playlists[mood].append(normalized)
 
     return playlists
 
