@@ -122,35 +122,76 @@ def merge_playlists(a: PlaylistMap, b: PlaylistMap) -> PlaylistMap:
     return merged
 
 
-def compute_playlist_stats(playlists: PlaylistMap) -> Dict[str, object]:
-    """Compute statistics across all playlists."""
-    all_songs: List[Song] = []
-    for songs in playlists.values():
-        all_songs.extend(songs)
-
-    hype = playlists.get("Hype", [])
-    chill = playlists.get("Chill", [])
-    mixed = playlists.get("Mixed", [])
-
-    total = len(hype)
-    hype_ratio = len(hype) / total if total > 0 else 0.0
-
-    avg_energy = 0.0
-    if all_songs:
-        total_energy = sum(song.get("energy", 0) for song in hype)
-        avg_energy = total_energy / len(all_songs)
-
-    top_artist, top_count = most_common_artist(all_songs)
-
+def compute_playlist_stats(playlists):
+    """
+    Compute statistics based on UNIQUE songs across all playlists.
+    
+    Args:
+        playlists: Dictionary with keys like "Hype", "Chill", "Mixed"
+    
+    Returns:
+        Dictionary with total_songs, hype_count, chill_count, mixed_count,
+        hype_ratio, avg_energy, top_artist, top_artist_count
+    """
+    # Use a dictionary to track unique songs (key = title|artist)
+    unique_songs = {}
+    
+    # Track songs by mood for counting
+    hype_songs = set()
+    chill_songs = set()
+    mixed_songs = set()
+    
+    # Process each playlist
+    for mood, songs in playlists.items():
+        for song in songs:
+            # Create unique key (case-insensitive to avoid duplicates)
+            song_key = f"{song['title'].lower()}|{song['artist'].lower()}"
+            
+            # Store the song if we haven't seen it before
+            if song_key not in unique_songs:
+                unique_songs[song_key] = song
+            
+            # Track which playlists contain this song (for mood counting)
+            if mood == "Hype":
+                hype_songs.add(song_key)
+            elif mood == "Chill":
+                chill_songs.add(song_key)
+            elif mood == "Mixed":
+                mixed_songs.add(song_key)
+    
+    total_songs = len(unique_songs)
+    hype_count = len(hype_songs)
+    chill_count = len(chill_songs)
+    mixed_count = len(mixed_songs)
+    
+    # Calculate hype ratio (percentage of hype songs relative to total)
+    hype_ratio = (hype_count / total_songs * 100) if total_songs > 0 else 0
+    
+    # Calculate average energy across all unique songs
+    total_energy = sum(song.get('energy', 0) for song in unique_songs.values())
+    avg_energy = total_energy / total_songs if total_songs > 0 else 0
+    
+    # Find top artist (most songs by the same artist)
+    artist_counts = {}
+    for song in unique_songs.values():
+        artist = song.get('artist', 'Unknown')
+        artist_counts[artist] = artist_counts.get(artist, 0) + 1
+    
+    top_artist = None
+    top_artist_count = 0
+    if artist_counts:
+        top_artist = max(artist_counts, key=artist_counts.get)
+        top_artist_count = artist_counts[top_artist]
+    
     return {
-        "total_songs": len(all_songs),
-        "hype_count": len(hype),
-        "chill_count": len(chill),
-        "mixed_count": len(mixed),
+        "total_songs": total_songs,
+        "hype_count": hype_count,
+        "chill_count": chill_count,
+        "mixed_count": mixed_count,
         "hype_ratio": hype_ratio,
         "avg_energy": avg_energy,
         "top_artist": top_artist,
-        "top_artist_count": top_count,
+        "top_artist_count": top_artist_count,
     }
 
 
@@ -222,3 +263,25 @@ def history_summary(history: List[Song]) -> Dict[str, int]:
         else:
             counts[mood] += 1
     return counts
+
+def add_new_song_pipeline(
+    new_song: Song, 
+    all_songs: List[Song], 
+    profile: Dict[str, object]
+) -> Tuple[List[Song], PlaylistMap, Dict[str, object]]:
+    """
+    Pure functional pipeline to inject a song and recalculate metrics instantly.
+    
+    Returns:
+        tuple: (updated_songs_list, updated_playlists, live_stats)
+    """
+    # 1. Add the raw song to the collection copy to maintain purity
+    updated_songs = all_songs + [new_song]
+    
+    # 2. Rebuild playlists from the complete list of songs
+    updated_playlists = build_playlists(updated_songs, profile)
+    
+    # 3. Compute the freshly updated stats dictionary
+    live_stats = compute_playlist_stats(updated_playlists)
+    
+    return updated_songs, updated_playlists, live_stats
