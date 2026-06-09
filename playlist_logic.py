@@ -79,9 +79,12 @@ def classify_song(song: Song, profile: Dict[str, object]) -> List[str]:
 
     moods = []
     
-    if energy <= chill_max_energy or is_chill_keyword:
+    # Chill: low energy AND (chill keywords or genre match)
+    if energy <= chill_max_energy and (is_chill_keyword or genre in ["lofi", "ambient"]):
         moods.append("Chill")
-    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
+    
+    # Hype: high energy AND (favorite genre or hype keywords)
+    if energy >= hype_min_energy and (genre == favorite_genre or is_hype_keyword):
         moods.append("Hype")
     
     return moods if moods else ["Mixed"]
